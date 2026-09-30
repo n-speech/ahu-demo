@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AHU in AR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<style>
+:root{--bg:#eaeef1;--panel:#fff;--fg:#1a2329;--muted:#5a6873;--line:#cdd5db;--accent:#d99a00;--accent-ink:#8a6200;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"IBM Plex Sans",system-ui,sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#11171b;--panel:#182127;--fg:#e2e8eb;--muted:#8c9ba5;--line:#2b3740;--accent:#f0b72a;--accent-ink:#f0b72a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body)}
+.wrap{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:20px 32px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 20px}
+h1{font:700 2rem/1 var(--f-display);margin:0}
+h1 span{color:var(--accent-ink)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.back{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg);text-decoration:none;border:1px solid var(--line);padding:2px 8px;border-radius:3px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+model-viewer{width:100%;height:min(70vh,620px);min-height:380px;background:var(--panel);border-radius:6px}
+.arbtn{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font:600 1rem var(--f-body);
+  background:var(--accent);color:#1a1300;border:0;border-radius:6px;padding:12px 22px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.arbtn:focus-visible,.back:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+.side{padding:16px;display:flex;flex-direction:column;gap:14px}
+.label{font-family:var(--f-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:8px 0 0;font-variant-numeric:tabular-nums}
+dt{color:var(--muted)} dd{margin:0;font-family:var(--f-mono);text-align:right}
+.src{font-family:var(--f-mono);font-size:.62rem;text-transform:uppercase;padding:0 5px;border-radius:2px;margin-left:6px}
+.src.ref{background:color-mix(in srgb,var(--muted) 20%,transparent)}
+.src.ph{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-ink)}
+#qr{background:#fff;padding:10px;border-radius:4px;width:max-content}
+#qr img,#qr canvas{display:block;width:160px;height:160px}
+.msg{font-size:.85rem;color:var(--accent-ink)}
+ol{margin:8px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.desk-only{display:flex;flex-direction:column;gap:10px}
+@media (pointer:coarse){.desk-only{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AHU <span>in AR</span></h1>
+      <p class="sub">Place one air handling unit on your site at full size. Walk around it and check clearances, access and crane paths.</p>
+    </div>
+    <a class="back" href="index.html">← Site planner</a>
+  </header>
+
+  <div class="grid">
+    <div class="card" style="position:relative">
+      <model-viewer id="mv" alt="Air handling unit, full scale"
+        ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+        camera-controls touch-action="pan-y" shadow-intensity="1" exposure="1"
+        camera-orbit="-40deg 65deg auto">
+        <button slot="ar-button" class="arbtn">View on my site</button>
+      </model-viewer>
+    </div>
+
+    <aside class="card side">
+      <div>
+        <div class="label">Unit shown</div>
+        <dl id="specs"></dl>
+      </div>
+      <div>
+        <div class="label">How to use</div>
+        <ol>
+          <li>Open this page on your phone at the site.</li>
+          <li>Tap <b>View on my site</b> and allow the camera.</li>
+          <li>Move the phone slowly over the ground until it is detected.</li>
+          <li id="stepBack">Step back to see the whole unit.</li>
+        </ol>
+      </div>
+      <div class="desk-only">
+        <div class="label">Open on your phone</div>
+        <div id="qr" aria-label="QR code with the link to this page"></div>
+      </div>
+      <div class="msg" id="msg" hidden></div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="js/unit-model.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const msg=$('msg');
+function say(t){msg.hidden=false;msg.textContent=t}
+
+const CFG=window.AHU_CONFIG;
+if(!CFG||typeof window.buildAhuUnit!=='function'||typeof THREE==='undefined'){
+  say('The page could not load its files. Check that config.js and js/unit-model.js are next to ar.html, then reload.');
+  return;
+}
+const U=CFG.unit, S=CFG.sources||{}, col=CFG.colors;
+const FT=3.28084, f1=n=>n.toLocaleString('en-US',{maximumFractionDigits:1});
+
+// Side panel from config.js
+function tag(key){const s=S[key];return s?'<span class="src '+(s==='assumed'?'ph':'ref')+'">'+s+'</span>':''}
+const sections=Math.max(1,Math.ceil(U.lengthM/U.maxSectionM));
+$('specs').innerHTML=
+  '<dt>Airflow</dt><dd>'+U.airflowCFM.toLocaleString('en-US')+' CFM'+tag('airflowCFM')+'</dd>'+
+  '<dt>Length</dt><dd>'+f1(U.lengthM*FT)+' ft · '+U.lengthM+' m'+tag('lengthM')+'</dd>'+
+  '<dt>Width</dt><dd>'+f1(U.widthM*FT)+' ft · '+U.widthM+' m'+tag('widthM')+'</dd>'+
+  '<dt>Height</dt><dd>'+f1(U.heightM*FT)+' ft · '+U.heightM+' m'+tag('heightM')+'</dd>'+
+  '<dt>Shipping sections</dt><dd>'+sections+tag('maxSectionM')+'</dd>';
+$('stepBack').textContent='Step back: the unit is about '+Math.round(U.lengthM*FT)+' ft long.';
+
+// Build the unit from config.js and hand it to model-viewer as a GLB
+const mats={
+  body:new THREE.MeshStandardMaterial({color:col.duty,metalness:.3,roughness:.55}),
+  fans:new THREE.MeshStandardMaterial({color:col.fans,roughness:.6}),
+  clearance:new THREE.MeshStandardMaterial({color:col.clearance,transparent:true,opacity:.55,roughness:1})
+};
+const unit=window.buildAhuUnit(THREE,U,mats,{sections:true,clearance:true,edges:false});
+const scene=new THREE.Scene(); scene.add(unit);
+
+new THREE.GLTFExporter().parse(scene,function(glb){
+  const url=URL.createObjectURL(new Blob([glb],{type:'model/gltf-binary'}));
+  $('mv').src=url;
+},{binary:true});
+
+// QR code for opening on a phone
+try{new QRCode($('qr'),{text:location.href,width:320,height:320,correctLevel:QRCode.CorrectLevel.M})}catch(e){}
+
+const mv=$('mv');
+mv.addEventListener('ar-status',e=>{
+  if(e.detail.status==='failed')say('AR could not start on this device. It needs a recent phone with ARCore (Android) or ARKit (iPhone).');
+});
+mv.addEventListener('load',()=>{
+  if(!mv.canActivateAR&&matchMedia('(pointer:coarse)').matches)say('This phone or browser does not support AR. You can still rotate the 3D model.');
+});
+})();
+</script>
+</body>
+</html>

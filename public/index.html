@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AHU Site Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: engineer's tool — control sheet on the left, 3D site on the right; stacks on phones */
+:root{
+  --bg:#eaeef1; --panel:#ffffff; --fg:#1a2329; --muted:#5a6873; --line:#cdd5db;
+  --accent:#d99a00; --accent-ink:#8a6200; --steel:#b9c3ca; --standby:#e2a50f;
+  --ground:#dfe4e7; --building:#9aa6ae; --grid:#c3ccd2;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11171b; --panel:#182127; --fg:#e2e8eb; --muted:#8c9ba5; --line:#2b3740;
+  --accent:#f0b72a; --accent-ink:#f0b72a; --steel:#8e9aa3; --standby:#e8ad1c;
+  --ground:#1c252b; --building:#3b4851; --grid:#2a353c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171b; --panel:#182127; --fg:#e2e8eb; --muted:#8c9ba5; --line:#2b3740;
+  --accent:#f0b72a; --accent-ink:#f0b72a; --steel:#8e9aa3; --standby:#e8ad1c;
+  --ground:#1c252b; --building:#3b4851; --grid:#2a353c; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.wrap{padding-inline:16px;padding-block:18px 28px;max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+h1{font-family:var(--f-display);font-weight:700;font-size:2rem;letter-spacing:.01em;margin:0;line-height:1;text-wrap:balance}
+h1 span{color:var(--accent-ink)}
+.sub{color:var(--muted);margin:0;max-width:62ch}
+.tag{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);padding:2px 8px;border-radius:3px}
+
+.app{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:880px){.app{grid-template-columns:minmax(0,1fr)}}
+
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column}
+.sec{padding:16px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0}
+.label{font-family:var(--f-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:500 .85rem var(--f-body);background:transparent;color:var(--fg);border:0;border-left:1px solid var(--line);padding:7px 4px;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--panel)}
+.seg button:focus-visible,.viewbar button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toggles{display:flex;flex-direction:column;gap:8px}
+.toggles label{display:flex;gap:10px;align-items:center;cursor:pointer}
+.toggles input{accent-color:var(--accent);width:16px;height:16px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;flex:none}
+
+.out{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}
+.out .k{font-size:.78rem;color:var(--muted)}
+.out .v{font-family:var(--f-display);font-weight:600;font-size:1.55rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.out .v small{font-family:var(--f-mono);font-size:.72rem;font-weight:400;color:var(--muted);margin-left:3px}
+.out .wide{grid-column:1/-1}
+.formula{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:4px;overflow-x:auto;white-space:nowrap}
+.warn{font-size:.8rem;color:var(--accent-ink)}
+
+details summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";font-family:var(--f-mono);color:var(--muted)}
+details[open] summary::after{content:"–"}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.specs .field label{font-size:.78rem;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.specs input{font:500 .9rem var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0;box-sizing:border-box}
+.src{font-family:var(--f-mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;padding:0 5px;border-radius:2px}
+.src.ref{background:color-mix(in srgb,var(--steel) 35%,transparent);color:var(--fg)}
+.src.ph{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-ink)}
+.note{font-size:.78rem;color:var(--muted);margin:10px 0 0}
+
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;height:min(78vh,780px);min-height:420px;display:flex;flex-direction:column}
+@media (max-width:880px){.stage{position:relative;top:0;height:62vh;order:-1}}
+.viewbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
+.viewbar .grp{display:flex;gap:6px;flex-wrap:wrap}
+.viewbar button{font:500 .8rem var(--f-body);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer}
+.viewbar button:hover{border-color:var(--muted)}
+.hint{font-size:.76rem;color:var(--muted)}
+.canvasbox{position:relative;flex:1;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.legend{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.74rem;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:4px;padding:6px 9px;max-width:calc(100% - 20px)}
+.legend span{display:flex;gap:6px;align-items:center}
+.fail{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--muted)}
+.arlink{color:var(--fg);text-decoration:none;border-color:var(--accent)}
+.arlink:hover{background:var(--accent);color:#1a1300}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AHU <span>Site</span> Planner</h1>
+      <p class="sub">Enter the IT load of the data hall. The planner sizes the air handling units, adds redundancy and shows how they sit on your site.</p>
+    </div>
+    <a class="tag arlink" href="ar.html">View one unit in AR →</a>
+  </header>
+
+  <div class="app">
+    <aside class="sheet" aria-label="Project inputs">
+      <div class="sec">
+        <div class="field">
+          <div class="row"><span class="label">IT load</span><span class="val" id="mwOut"></span></div>
+          <input type="range" id="mw" min="1" max="60" step="1" value="10" aria-label="IT load in megawatts">
+        </div>
+        <div class="field">
+          <span class="label">Supply / return ΔT</span>
+          <div class="seg" id="dt" role="group" aria-label="Temperature difference">
+            <button data-v="15">15 °F</button><button data-v="20" aria-pressed="true">20 °F</button><button data-v="25">25 °F</button><button data-v="30">30 °F</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Redundancy</span>
+          <div class="seg" id="red" role="group" aria-label="Redundancy">
+            <button data-v="N">N</button><button data-v="N+1" aria-pressed="true">N+1</button><button data-v="N+2">N+2</button><button data-v="2N">2N</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Placement</span>
+          <div class="seg" id="place" role="group" aria-label="Placement">
+            <button data-v="ground" aria-pressed="true">Ground pad</button><button data-v="roof">Rooftop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <span class="label">Result</span>
+        <div class="out">
+          <div><div class="k">Required airflow</div><div class="v" id="oReq"></div></div>
+          <div><div class="k">Units</div><div class="v" id="oUnits"></div></div>
+          <div><div class="k">Footprint, units only</div><div class="v" id="oArea"></div></div>
+          <div><div class="k">Shipping weight</div><div class="v" id="oWt"></div></div>
+          <div><div class="k">Shipping sections</div><div class="v" id="oSec"></div></div>
+          <div><div class="k">Installed airflow</div><div class="v" id="oInst"></div></div>
+          <div class="wide formula" id="oFormula"></div>
+        </div>
+        <div class="warn" id="oWarn" hidden></div>
+      </div>
+
+      <div class="sec">
+        <span class="label">Show on site</span>
+        <div class="toggles">
+          <label><input type="checkbox" id="tClr" checked> <span class="sw" style="background:var(--accent);opacity:.45"></span> Service clearance</label>
+          <label><input type="checkbox" id="tSec" checked> Shipping section joints</label>
+          <label><input type="checkbox" id="tPerson" checked> 6 ft person for scale</label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <details id="specBox">
+          <summary>Unit data</summary>
+          <div class="specs">
+            <div class="field"><label for="sCfm">Airflow per unit, CFM <span data-src="airflowCFM"></span></label><input id="sCfm" type="number" min="1000" step="1000"></div>
+            <div class="field"><label for="sWt">Weight per unit, t <span data-src="weightT"></span></label><input id="sWt" type="number" min="1" step="0.5"></div>
+            <div class="field"><label for="sLen">Length, m <span data-src="lengthM"></span></label><input id="sLen" type="number" min="2" step="0.5"></div>
+            <div class="field"><label for="sWid">Width, m <span data-src="widthM"></span></label><input id="sWid" type="number" min="1" step="0.5"></div>
+            <div class="field"><label for="sHei">Height, m <span data-src="heightM"></span></label><input id="sHei" type="number" min="1" step="0.5"></div>
+            <div class="field"><label for="sClr">Clearance, m <span data-src="clearanceM"></span></label><input id="sClr" type="number" min="0" step="0.5"></div>
+            <div class="field"><label for="sSec">Max section length, m <span data-src="maxSectionM"></span></label><input id="sSec" type="number" min="2" step="0.5"></div>
+          </div>
+          <p class="note"><b>spec</b>: manufacturer data. <b>ref</b>: from a public source, to be confirmed. <b>assumed</b>: placeholder until the manufacturer supplies real figures. Changes here last until the page is reloaded.</p>
+        </details>
+      </div>
+    </aside>
+
+    <section class="stage" aria-label="3D site view">
+      <div class="viewbar">
+        <div class="grp">
+          <button data-view="iso">3D</button><button data-view="top">Top</button><button data-view="side">Side</button><button data-view="near">Close-up</button>
+        </div>
+        <span class="hint">Drag to rotate · scroll or pinch to zoom</span>
+      </div>
+      <div class="canvasbox" id="box">
+        <canvas id="c" aria-label="3D model of the air handling units next to the data hall"></canvas>
+        <div class="legend">
+          <span><i class="sw" id="lgDuty"></i>Duty unit</span>
+          <span><i class="sw" id="lgStby"></i>Standby unit</span>
+          <span><i class="sw" id="lgBld"></i>Data hall (context)</span>
+          <span><i class="sw" id="lgClr"></i>Service clearance</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="config.js"></script>
+<script src="js/unit-model.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const M2FT=3.28084, M2FT2=10.7639;
+const fmt=(n,d=0)=>n.toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:d});
+const MAX_RENDER=80;
+const CFG=window.AHU_CONFIG;
+if(!CFG||typeof window.buildAhuUnit!=='function'){
+  document.querySelector('.wrap').insertAdjacentHTML('afterbegin','<p class="warn">config.js or js/unit-model.js did not load. Check that both files are next to index.html.</p>');
+  return;
+}
+const U=CFG.unit, D=CFG.defaults;
+
+const st={mw:D.itLoadMW,dt:D.deltaTF,red:D.redundancy,place:D.placement};
+
+// Fill inputs and source tags from config.js
+$('mw').value=st.mw;
+const FIELDS={sCfm:'airflowCFM',sWt:'weightT',sLen:'lengthM',sWid:'widthM',sHei:'heightM',sClr:'clearanceM',sSec:'maxSectionM'};
+Object.keys(FIELDS).forEach(id=>{
+  const key=FIELDS[id]; $(id).value=U[key];
+  const tag=document.querySelector('[data-src="'+key+'"]');
+  const src=(CFG.sources||{})[key];
+  if(tag&&src){tag.textContent=src;tag.className='src '+(src==='assumed'?'ph':'ref')}
+});
+[['dt',st.dt],['red',st.red],['place',st.place]].forEach(([id,v])=>{
+  $(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===String(v))));
+});
+
+function seg(id,key,num){
+  const el=$(id);
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    st[key]=num?+b.dataset.v:b.dataset.v; update(true);
+  });
+  el.querySelectorAll('button:not([aria-pressed])').forEach(b=>b.setAttribute('aria-pressed','false'));
+}
+seg('dt','dt',true); seg('red','red'); seg('place','place');
+$('mw').addEventListener('input',()=>{st.mw=+$('mw').value;update(true)});
+['sCfm','sWt','sLen','sWid','sHei','sClr','sSec'].forEach(id=>$(id).addEventListener('input',()=>update(true)));
+['tClr','tSec','tPerson'].forEach(id=>$(id).addEventListener('change',()=>update(false)));
+
+function num(id,min){const v=parseFloat($(id).value);return isFinite(v)&&v>=min?v:null}
+
+function calc(){
+  const cfmU=num('sCfm',1000)||U.airflowCFM, wt=num('sWt',0.1)||U.weightT;
+  const L=num('sLen',2)||U.lengthM, W=num('sWid',1)||U.widthM, H=num('sHei',1)||U.heightM;
+  const clr=num('sClr',0); const C=clr===null?U.clearanceM:clr;
+  const maxSec=num('sSec',2)||U.maxSectionM;
+  const btu=st.mw*1e6*3.412;
+  const req=btu/(1.08*st.dt);
+  const n=Math.ceil(req/cfmU);
+  const spare={'N':0,'N+1':1,'N+2':2,'2N':n}[st.red];
+  const total=n+spare;
+  const secPer=Math.ceil(L/maxSec);
+  return {cfmU,wt,L,W,H,C,maxSec,btu,req,n,spare,total,secPer};
+}
+
+function renderNumbers(r){
+  $('mwOut').textContent=st.mw+' MW';
+  $('oReq').innerHTML=fmt(r.req/1e6,2)+'<small>M CFM</small>';
+  $('oUnits').innerHTML=r.total+'<small>'+r.n+' duty + '+r.spare+' standby</small>';
+  const area=r.total*r.L*r.W;
+  $('oArea').innerHTML=fmt(area*M2FT2)+'<small>ft² · '+fmt(area)+' m²</small>';
+  const t=r.total*r.wt;
+  $('oWt').innerHTML=fmt(t)+'<small>t · '+fmt(t*1.10231)+' US tons</small>';
+  $('oSec').innerHTML=r.total*r.secPer+'<small>'+r.secPer+' per unit</small>';
+  const inst=r.total*r.cfmU;
+  $('oInst').innerHTML=fmt(inst/1e6,2)+'<small>M CFM</small>';
+  $('oFormula').textContent='CFM = '+st.mw+' MW × 3,412,000 BTU/h ÷ (1.08 × '+st.dt+' °F) = '+fmt(r.req);
+  const w=$('oWarn');
+  if(r.total>MAX_RENDER){w.hidden=false;w.textContent='The 3D view shows the first '+MAX_RENDER+' of '+r.total+' units.'}else w.hidden=true;
+}
+
+/* ---------- 3D ---------- */
+const canvas=$('c'), box=$('box');
+if(typeof THREE==='undefined'){
+  box.insertAdjacentHTML('beforeend','<div class="fail">The 3D library did not load. Check your connection and reload the page.</div>');
+  update=function(){renderNumbers(calc())}; update(); return;
+}
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1,0.5,4000);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI/2-0.03;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x667788,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);
+sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); scene.add(sun); scene.add(sun.target);
+
+const mats={
+  duty:new THREE.MeshStandardMaterial({roughness:.55,metalness:.35}),
+  stby:new THREE.MeshStandardMaterial({roughness:.55,metalness:.25}),
+  bld:new THREE.MeshStandardMaterial({roughness:.9}),
+  ground:new THREE.MeshStandardMaterial({roughness:1}),
+  fan:new THREE.MeshStandardMaterial({color:0x20282d,roughness:.6}),
+  clr:new THREE.MeshBasicMaterial({transparent:true,opacity:.55,depthWrite:false}),
+  clrLine:new THREE.LineBasicMaterial(),
+  person:new THREE.MeshStandardMaterial({color:0x1f7ae0,roughness:.6}),
+};
+function makeTag(text){
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=72;
+  const x=cv.getContext('2d');
+  x.fillStyle='#1f7ae0'; x.beginPath(); x.roundRect?x.roundRect(4,4,248,52,10):x.rect(4,4,248,52); x.fill();
+  x.beginPath(); x.moveTo(116,56); x.lineTo(140,56); x.lineTo(128,70); x.fill();
+  x.fillStyle='#fff'; x.font='600 28px "IBM Plex Sans", sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(text,128,31);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,sizeAttenuation:false}));
+  sp.scale.set(0.16,0.045,1); sp.center.set(0.5,0); sp.renderOrder=10; return sp;
+}
+let personPos=null;
+function applyTheme(){
+  const col=CFG.colors;
+  mats.duty.color.set(col.duty);
+  mats.stby.color.set(col.standby);
+  mats.fan.color.set(col.fans);
+  mats.clr.color.set(col.clearance);
+  mats.clrLine.color.set(col.clearance);
+  mats.bld.color.set(cssVar('--building'));
+  mats.ground.color.set(cssVar('--ground'));
+  scene.background=new THREE.Color(cssVar('--bg'));
+  $('lgDuty').style.background=col.duty;
+  $('lgStby').style.background=col.standby;
+  $('lgBld').style.background=cssVar('--building');
+  $('lgClr').style.background=col.clearance; $('lgClr').style.opacity='.55';
+  if(grid){grid.material.color.set(cssVar('--grid'))}
+}
+
+let world=null, grid=null, fitBox=null, firstUnit=null;
+const groundMesh=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),mats.ground);
+groundMesh.rotation.x=-Math.PI/2; groundMesh.receiveShadow=true; scene.add(groundMesh);
+
+function boxMesh(w,h,d,mat,x,y,z){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; return m;
+}
+
+function buildScene(r,refit){
+  if(world){world.traverse(o=>{if(o.geometry)o.geometry.dispose()}); scene.remove(world)}
+  world=new THREE.Group(); scene.add(world);
+  const count=Math.min(r.total,MAX_RENDER);
+  const pitch=r.W+r.C*2+1;               // unit + clearance both sides + walkway
+  const perRow=Math.min(count,10);
+  const rows=Math.ceil(count/perRow);
+  const aisle=r.C+4;
+  const roof=st.place==='roof';
+  const Hb=14;
+  const Lb=Math.max(perRow*pitch+16,70);
+  const Db=roof?Math.max(rows*(r.L+aisle)+12,50):50;
+  world.add(boxMesh(Lb,Hb,Db,mats.bld,0,Hb/2,-Db/2));
+  const base=roof?Hb:0;
+  const showSec=$('tSec').checked, showClr=$('tClr').checked;
+  let first=null;
+  for(let i=0;i<count;i++){
+    const row=Math.floor(i/perRow), inRow=Math.min(perRow,count-row*perRow), col=i-row*perRow;
+    const x=(col-(inRow-1)/2)*pitch;
+    const zStart=roof?(-Db+6+row*(r.L+aisle)):(6+row*(r.L+aisle));
+    const zc=zStart+r.L/2;
+    const standby=i>=r.n;
+    const g=window.buildAhuUnit(THREE,{
+      lengthM:r.L,widthM:r.W,heightM:r.H,clearanceM:r.C,maxSectionM:r.maxSec,fansOnTop:CFG.unit.fansOnTop
+    },{body:standby?mats.stby:mats.duty,fans:mats.fan,clearance:mats.clr,clearanceLine:mats.clrLine},
+    {sections:showSec,clearance:showClr,edges:true});
+    g.position.set(x,base,zc);
+    world.add(g);
+    if(i===0)first={x,zStart};
+  }
+  if($('tPerson').checked&&first){
+    const px=first.x-r.W/2-(r.C>0?r.C/2:0.8), pz=first.zStart-1.2;
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.25,1.5,16),mats.person);
+    body.position.set(px,base+0.75,pz); body.castShadow=true;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.16,16,12),mats.person);
+    head.position.set(px,base+1.66,pz); head.castShadow=true;
+    const tag=makeTag('6 ft person');
+    tag.position.set(px,base+2.1,pz);
+    world.add(body,head,tag);
+    personPos=new THREE.Vector3(px,base+1,pz);
+  }else personPos=null;
+  firstUnit=first?new THREE.Vector3(first.x,base+r.H/2,first.zStart+r.L/2):null;
+  if(grid){scene.remove(grid);grid.geometry.dispose()}
+  const gs=Math.ceil(Math.max(Lb,Db+rows*(r.L+aisle)+20)/10)*10+40;
+  grid=new THREE.GridHelper(gs,gs/5); grid.position.y=0.02;
+  grid.material.transparent=true; grid.material.opacity=.6;
+  grid.material.color.set(cssVar('--grid')); scene.add(grid);
+
+  fitBox=new THREE.Box3().setFromObject(world);
+  const c=fitBox.getCenter(new THREE.Vector3()), sz=fitBox.getSize(new THREE.Vector3()).length();
+  sun.position.set(c.x+sz*.5,sz*.9,c.z+sz*.6); sun.target.position.copy(c);
+  const sc=sun.shadow.camera, h=sz*.7; sc.left=-h;sc.right=h;sc.top=h;sc.bottom=-h;sc.near=1;sc.far=sz*3; sc.updateProjectionMatrix();
+  controls.maxDistance=sz*4;
+  if(refit)setView(currentView);
+}
+
+let currentView='iso';
+function setView(v){
+  currentView=v;
+  if(!fitBox)return;
+  const c=fitBox.getCenter(new THREE.Vector3()), d=fitBox.getSize(new THREE.Vector3()).length();
+  const dist=d*1.05;
+  if(v==='near'&&firstUnit){
+    // Camera stands outside, facing the building, with the person and first unit in front
+    const t=personPos||firstUnit;
+    const tgt=new THREE.Vector3((t.x+firstUnit.x)/2,firstUnit.y,(t.z+firstUnit.z)/2);
+    camera.position.set(tgt.x-24,tgt.y+10,tgt.z+30);
+    controls.target.copy(tgt); controls.update(); return;
+  }
+  if(v==='top')camera.position.set(c.x,c.y+dist*1.15,c.z+0.01);
+  else if(v==='side')camera.position.set(c.x+dist*1.05,c.y+d*0.08,c.z);
+  else camera.position.set(c.x-dist*.62,c.y+dist*.55,c.z+dist*.75);
+  controls.target.copy(c); controls.update();
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+
+function resize(){
+  const w=box.clientWidth,h=box.clientHeight; if(!w||!h)return;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(box);
+
+function loop(){controls.update();renderer.render(scene,camera);requestAnimationFrame(loop)}
+
+update=function(refit){const r=calc();renderNumbers(r);buildScene(r,refit)};
+
+const mq=window.matchMedia('(prefers-color-scheme: dark)');
+(mq.addEventListener?mq.addEventListener('change',applyTheme):mq.addListener(applyTheme));
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+applyTheme(); resize(); update(true); loop();
+})();
+var update;
+</script>
+</body>
+</html>
